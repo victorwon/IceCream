@@ -167,6 +167,8 @@ extension CKRecordRecoverable where Self: Object {
         let schema = schema ?? Self().objectSchema
         guard let objectPrimaryKeyType = schema.primaryKeyProperty?.type else { return nil }
         switch objectPrimaryKeyType {
+        case .objectId:
+            return try! ObjectId(string: recordID.recordName)
         case .string:
             return recordID.recordName
         case .int:
