@@ -54,8 +54,9 @@ extension CKRecordConvertible where Self: Object {
         }
         
         switch primaryKeyProperty.type {
-        case .string:
-            if let primaryValueString = self[primaryKeyProperty.name] as? String {
+        case .string, .objectId:
+            if let primaryValueString = self[primaryKeyProperty.name] as? String ??
+                (self[primaryKeyProperty.name] as? ObjectId)?.stringValue as? String {
                 // For more: https://developer.apple.com/documentation/cloudkit/ckrecord/id/1500975-init
                 assert(primaryValueString.allSatisfy({ $0.isASCII }), "Primary value for CKRecord name must contain only ASCII characters")
                 assert(primaryValueString.count <= 255, "Primary value for CKRecord name must not exceed 255 characters")
@@ -179,3 +180,4 @@ extension CKRecordConvertible where Self: Object {
     }
     
 }
+
