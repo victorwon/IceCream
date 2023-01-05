@@ -126,8 +126,9 @@ extension CKRecordConvertible where Self: Object {
                         for index in 0..<wrappedArray.count {
                             guard let object = wrappedArray[index] as? Object, let primaryKey = object.objectSchema.primaryKeyProperty?.name else { continue }
                             switch object.objectSchema.primaryKeyProperty?.type {
-                            case .string:
-                                if let primaryValueString = object[primaryKey] as? String, let obj = object as? CKRecordConvertible, !obj.isDeleted {
+                            case .string, .objectId:
+                                if let primaryValueString = object[primaryKey] as? String ?? (object[primaryKey] as? ObjectId)?.stringValue as? String,
+                                    let obj = object as? CKRecordConvertible, !obj.isDeleted {
                                     let referenceZoneID = CKRecordZone.ID(zoneName: "\(object.objectSchema.className)sZone", ownerName: CKCurrentUserDefaultName)
                                     referenceArray.append(CKRecord.Reference(recordID: CKRecord.ID(recordName: primaryValueString, zoneID: referenceZoneID), action: .none))
                                 }
@@ -153,7 +154,7 @@ extension CKRecordConvertible where Self: Object {
             }
             
             switch prop.type {
-            case .int, .string, .bool, .date, .float, .double, .data:
+            case .int, .string, .bool, .date, .float, .double, .data, .objectId:
                 r[prop.name] = item as? CKRecordValue
             case .object:
                 guard let objectName = prop.objectClassName else { break }
