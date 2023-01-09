@@ -147,6 +147,7 @@ extension CKRecordConvertible where Self: Object {
                         r[prop.name] = nil
                     }
                 default:
+                    print("Other array types will be supported in the future.")
                     break
                     /// Other inner types of List is not supported yet
                 }
@@ -173,6 +174,7 @@ extension CKRecordConvertible where Self: Object {
                     r[prop.name] = nil
                 }
             default:
+                print("Other types will be supported in the future.")
                 break
             }
             

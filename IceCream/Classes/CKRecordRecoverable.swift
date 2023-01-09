@@ -113,6 +113,7 @@ extension CKRecordRecoverable where Self: Object {
                     }
                     
                 default:
+                    print("Other array types will be supported in the future.")
                     break
                 }
                 o.setValue(recordValue, forKey: prop.name)
@@ -122,6 +123,8 @@ extension CKRecordRecoverable where Self: Object {
             switch prop.type {
             case .int:
                 recordValue = record.value(forKey: prop.name) as? Int
+            case .objectId:
+                recordValue = record.value(forKey: prop.name) as? ObjectId
             case .string:
                 recordValue = record.value(forKey: prop.name) as? String
             case .bool:
@@ -174,7 +177,7 @@ extension CKRecordRecoverable where Self: Object {
         case .int:
             return Int(recordID.recordName)
         default:
-            fatalError("The type of object primaryKey should be String or Int")
+            fatalError("The type of object primaryKey should be String or Int or ObjectId")
         }
     }
 }
