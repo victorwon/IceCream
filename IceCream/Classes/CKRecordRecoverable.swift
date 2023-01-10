@@ -123,8 +123,6 @@ extension CKRecordRecoverable where Self: Object {
             switch prop.type {
             case .int:
                 recordValue = record.value(forKey: prop.name) as? Int
-            case .objectId:
-                recordValue = record.value(forKey: prop.name) as? ObjectId
             case .string:
                 recordValue = record.value(forKey: prop.name) as? String
             case .bool:
@@ -149,8 +147,10 @@ extension CKRecordRecoverable where Self: Object {
                     primaryKeyForRecordID(recordID: owner.recordID, schema: schema).flatMap {
                         recordValue = realm.dynamicObject(ofType: ownerType, forPrimaryKey: $0)
                     }
-                    // Because we use the primaryKey as recordName when object converting to CKRecord
+                    // use the primaryKey as CKRecord.recordName when converting realm obj to CKRecord
                 }
+            case .objectId:
+                recordValue = try! ObjectId(string: record.recordID.recordName)
             default:
                 print("Other types will be supported in the future.")
             }

@@ -56,7 +56,7 @@ extension CKRecordConvertible where Self: Object {
         switch primaryKeyProperty.type {
         case .string, .objectId:
             if let primaryValueString = self[primaryKeyProperty.name] as? String ??
-                (self[primaryKeyProperty.name] as? ObjectId)?.stringValue as? String {
+                (self[primaryKeyProperty.name] as? ObjectId)?.stringValue {
                 // For more: https://developer.apple.com/documentation/cloudkit/ckrecord/id/1500975-init
                 assert(primaryValueString.allSatisfy({ $0.isASCII }), "Primary value for CKRecord name must contain only ASCII characters")
                 assert(primaryValueString.count <= 255, "Primary value for CKRecord name must not exceed 255 characters")
@@ -127,7 +127,7 @@ extension CKRecordConvertible where Self: Object {
                             guard let object = wrappedArray[index] as? Object, let primaryKey = object.objectSchema.primaryKeyProperty?.name else { continue }
                             switch object.objectSchema.primaryKeyProperty?.type {
                             case .string, .objectId:
-                                if let primaryValueString = object[primaryKey] as? String ?? (object[primaryKey] as? ObjectId)?.stringValue as? String,
+                                if let primaryValueString = object[primaryKey] as? String ?? (object[primaryKey] as? ObjectId)?.stringValue,
                                     let obj = object as? CKRecordConvertible, !obj.isDeleted {
                                     let referenceZoneID = CKRecordZone.ID(zoneName: "\(object.objectSchema.className)sZone", ownerName: CKCurrentUserDefaultName)
                                     referenceArray.append(CKRecord.Reference(recordID: CKRecord.ID(recordName: primaryValueString, zoneID: referenceZoneID), action: .none))
@@ -155,8 +155,10 @@ extension CKRecordConvertible where Self: Object {
             }
             
             switch prop.type {
-            case .int, .string, .bool, .date, .float, .double, .data, .objectId:
+            case .int, .string, .bool, .date, .float, .double, .data:
                 r[prop.name] = item as? CKRecordValue
+            case .objectId:
+                r[prop.name] = nil  // Do NOT create _id in CloudKit as IceCream set PK to recordName already
             case .object:
                 guard let objectName = prop.objectClassName else { break }
                 if objectName == CreamLocation.className(), let creamLocation = item as? CreamLocation {
