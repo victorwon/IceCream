@@ -24,7 +24,7 @@ public protocol Syncable: AnyObject {
     /// Realm Database related
     func registerLocalDatabase()
     func cleanUp()
-    func add(record: CKRecord)
+    func add(record: CKRecord, databaseManager db: DatabaseManager)
     func delete(recordID: CKRecord.ID)
     
     func resolvePendingRelationships()

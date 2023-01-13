@@ -15,27 +15,27 @@ import CloudKit
 
 public final class SyncEngine {
     
-    private let databaseManager: DatabaseManager
+    public let databaseManager: DatabaseManager
     
-    public convenience init(objects: [Syncable], databaseScope: CKDatabase.Scope = .private, container: CKContainer = .default()) {
+    public convenience init(objects: [Syncable], databaseScope: CKDatabase.Scope = .private, container: CKContainer = .default(), autoSync: Bool = true) {
         switch databaseScope {
         case .private:
             let privateDatabaseManager = PrivateDatabaseManager(objects: objects, container: container)
-            self.init(databaseManager: privateDatabaseManager)
+            self.init(databaseManager: privateDatabaseManager, autoSync: autoSync)
         case .public:
             let publicDatabaseManager = PublicDatabaseManager(objects: objects, container: container)
-            self.init(databaseManager: publicDatabaseManager)
+            self.init(databaseManager: publicDatabaseManager, autoSync: autoSync)
         default:
             fatalError("Shared database scope is not supported yet")
         }
     }
     
-    private init(databaseManager: DatabaseManager) {
+    private init(databaseManager: DatabaseManager, autoSync: Bool) {
         self.databaseManager = databaseManager
-        setup()
+        setup(autoSync: autoSync)
     }
     
-    private func setup() {
+    private func setup(autoSync: Bool) {
         databaseManager.prepare()
         databaseManager.container.accountStatus { [weak self] (status, error) in
             guard let self = self else { return }
@@ -43,18 +43,22 @@ public final class SyncEngine {
             case .available:
                 self.databaseManager.registerLocalDatabase()
                 self.databaseManager.createCustomZonesIfAllowed()
-                self.databaseManager.fetchChangesInDatabase(nil)
+                if autoSync {
+                    self.databaseManager.fetchChangesInDatabase(nil)
+                    self.databaseManager.createDatabaseSubscriptionsForAll()
+                }
                 self.databaseManager.resumeLongLivedOperationIfPossible()
                 self.databaseManager.startObservingRemoteChanges()
                 self.databaseManager.startObservingTermination()
-                self.databaseManager.createDatabaseSubscriptionIfHaveNot()
             case .noAccount, .restricted:
                 guard self.databaseManager is PublicDatabaseManager else { break }
-                self.databaseManager.fetchChangesInDatabase(nil)
+                if autoSync {
+                    self.databaseManager.fetchChangesInDatabase(nil)
+                    self.databaseManager.createDatabaseSubscriptionsForAll()
+                }
                 self.databaseManager.resumeLongLivedOperationIfPossible()
                 self.databaseManager.startObservingRemoteChanges()
                 self.databaseManager.startObservingTermination()
-                self.databaseManager.createDatabaseSubscriptionIfHaveNot()
             case .temporarilyUnavailable:
                 break
             case .couldNotDetermine:
@@ -90,6 +94,10 @@ public enum Notifications: String, NotificationName {
 }
 
 public enum IceCreamKey: String {
+    /// Notifications
+    case affectedRecordType
+    case affectedRecordName
+    
     /// Tokens
     case databaseChangesTokenKey
     case zoneChangesTokenKey
@@ -98,7 +106,7 @@ public enum IceCreamKey: String {
     case subscriptionIsLocallyCachedKey
     case hasCustomZoneCreatedKey
     
-    var value: String {
+    public var value: String {
         return "icecream.keys." + rawValue
     }
 }
@@ -108,7 +116,13 @@ public enum IceCreamKey: String {
 /// e.g.: the cloudKitSubscriptionID, if you don't want to use "private_changes" and use another string. You should remove the old subsription first.
 /// Or your user will not save the same subscription again. So you got trouble.
 /// The right way is remove old subscription first and then save new subscription.
+/// Vic:
+///     1) Subscription for publicDB is based on recordType and predicate, same combination won't be allowed to register twice, no error will be returned
+///     2) Original icecream chose to fetch everything from publicDB, no matter what subscription was hit, the logic works but confusing and not effective
+///     3) we want to make it to create proper subscription and let developer to choose which record to download by parsing the remote notification received.
 public enum IceCreamSubscription: String, CaseIterable {
+    public static let PREFIX = "IC_"
+    
     case cloudKitPrivateDatabaseSubscriptionID = "private_changes"
     case cloudKitPublicDatabaseSubscriptionID = "cloudKitPublicDatabaseSubcriptionID"
     

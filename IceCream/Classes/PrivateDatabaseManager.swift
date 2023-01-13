@@ -14,6 +14,10 @@ import UIKit
 import CloudKit
 
 final class PrivateDatabaseManager: DatabaseManager {
+    func fetchChangesInDatabase(forRecordType recordType: String, andName recordName: String, _ callback: ((Error?) -> Void)?) {
+        // TODO: implement this for private database
+        fatalError("Method not implemented yet for private DB.")
+    }
     
     let container: CKContainer
     let database: CKDatabase
@@ -25,6 +29,8 @@ final class PrivateDatabaseManager: DatabaseManager {
         self.container = container
         self.database = container.privateCloudDatabase
     }
+    
+
     
     func fetchChangesInDatabase(_ callback: ((Error?) -> Void)?) {
         let changesOperation = CKFetchDatabaseChangesOperation(previousServerChangeToken: databaseChangeToken)
@@ -94,7 +100,7 @@ final class PrivateDatabaseManager: DatabaseManager {
         database.add(modifyOp)
     }
     
-    func createDatabaseSubscriptionIfHaveNot() {
+    func createDatabaseSubscriptionsForAll() {
         #if os(iOS) || os(tvOS) || os(macOS)
         guard !subscriptionIsLocallyCached else { return }
         let subscription = CKDatabaseSubscription(subscriptionID: IceCreamSubscription.cloudKitPrivateDatabaseSubscriptionID.id)
@@ -106,8 +112,11 @@ final class PrivateDatabaseManager: DatabaseManager {
         
         let createOp = CKModifySubscriptionsOperation(subscriptionsToSave: [subscription], subscriptionIDsToDelete: [])
         createOp.modifySubscriptionsCompletionBlock = { _, _, error in
-            guard error == nil else { return }
-            self.subscriptionIsLocallyCached = true
+            if let err = error {
+                print("====== Subscription ERROR: \(err)")
+            } else {
+                self.subscriptionIsLocallyCached = true
+            }
         }
         createOp.qualityOfService = .utility
         database.add(createOp)
@@ -149,7 +158,7 @@ final class PrivateDatabaseManager: DatabaseManager {
             /// Handle the record:
             guard let self = self else { return }
             guard let syncObject = self.syncObjects.first(where: { $0.recordType == record.recordType }) else { return }
-            syncObject.add(record: record)
+            syncObject.add(record: record, databaseManager: self)
         }
         
         changesOp.recordWithIDWasDeletedBlock = { [weak self] recordId, _ in

@@ -13,20 +13,20 @@ import UIKit
 
 import CloudKit
 
-final class PublicDatabaseManager: DatabaseManager {
+public final class PublicDatabaseManager: DatabaseManager {
+
+    public let container: CKContainer
+    public let database: CKDatabase
     
-    let container: CKContainer
-    let database: CKDatabase
+    public var syncObjects: [Syncable]
     
-    let syncObjects: [Syncable]
-    
-    init(objects: [Syncable], container: CKContainer) {
+    public init(objects: [Syncable], container: CKContainer) {
         self.syncObjects = objects
         self.container = container
         self.database = container.publicCloudDatabase
     }
     
-    func fetchChangesInDatabase(_ callback: ((Error?) -> Void)?) {
+    public func fetchChangesInDatabase(_ callback: ((Error?) -> Void)?) {
         syncObjects.forEach { [weak self] syncObject in
             let predicate = NSPredicate(value: true)
             let query = CKQuery(recordType: syncObject.recordType, predicate: predicate)
@@ -35,15 +35,63 @@ final class PublicDatabaseManager: DatabaseManager {
         }
     }
     
-    func createCustomZonesIfAllowed() {
+    // only fetch record changed in subscribed types instead of whole database
+    public func fetchChangesInDatabase(forRecordType recordType: String, andName recordName: String, _ callback: ((Error?) -> Void)?) {
+        syncObjects.forEach { [weak self] syncObject in
+            if syncObject.recordType == recordType {
+                let predicate = NSPredicate(format: "recordID = %@", CKRecord.ID(recordName: recordName))
+                let query = CKQuery(recordType: syncObject.recordType, predicate: predicate)
+                let queryOperation = CKQueryOperation(query: query)
+                self?.excuteQueryOperation(queryOperation: queryOperation, on: syncObject, callback: callback)
+            }
+        }
         
     }
     
-    func createDatabaseSubscriptionIfHaveNot() {
-        syncObjects.forEach { createSubscriptionInPublicDatabase(on: $0) }
+    public func createCustomZonesIfAllowed() {
+        
     }
     
-    func startObservingTermination() {
+    public func createDatabaseSubscriptionsForAll() {
+        #if os(iOS) || os(tvOS) || os(macOS)
+        syncObjects.forEach { createSubscriptionInPublicDatabase(on: $0, with: NSPredicate(value: true)) }
+        #endif
+    }
+    
+    public func createSubscriptionInPublicDatabase(on syncObject: Syncable, with predicate: NSPredicate) {
+        #if os(iOS) || os(tvOS) || os(macOS)
+        let cacheKey = IceCreamKey.subscriptionIsLocallyCachedKey.value + syncObject.recordType
+        // subscription needs to be updated when app becomes/resigns active, it's dynamic, can't be cached.
+        print("== Registering subscription: \(cacheKey)")
+        let subscription = CKQuerySubscription(recordType: syncObject.recordType, predicate: predicate,
+                                               subscriptionID: IceCreamSubscription.PREFIX + syncObject.recordType,
+                                               options: [CKQuerySubscription.Options.firesOnRecordCreation, CKQuerySubscription.Options.firesOnRecordUpdate, CKQuerySubscription.Options.firesOnRecordDeletion])
+        
+        let notificationInfo = CKSubscription.NotificationInfo()
+        notificationInfo.shouldSendContentAvailable = true // must be true or nothing will arrive. triple tested and it doesn't work even when app is in foreground.
+        // notificationInfo.desiredKeys = ["userId"] // can't set it to nil or empty, otherwise no sub notifications will arrive
+        subscription.notificationInfo = notificationInfo
+        // must delete old one if any, otherwise it won't update
+        let deleteOp = CKModifySubscriptionsOperation(subscriptionsToSave: nil, subscriptionIDsToDelete: [subscription.subscriptionID])
+        deleteOp.modifySubscriptionsCompletionBlock = { _, _, error in
+            if let err = error {
+                print("====== Delete Subscription ERROR: \(err)")
+            }
+        }
+        database.add(deleteOp)
+        let createOp = CKModifySubscriptionsOperation(subscriptionsToSave: [subscription], subscriptionIDsToDelete: nil)
+        createOp.addDependency(deleteOp) // create only after deleting is done
+        createOp.modifySubscriptionsCompletionBlock = { _, _, error in
+            if let err = error {
+                print("====== Create Subscription \(syncObject.recordType) ERROR: \(err)")
+            }
+        }
+        createOp.qualityOfService = .utility
+        database.add(createOp)
+        #endif
+    }
+    
+    public func startObservingTermination() {
         #if os(iOS) || os(tvOS)
         
         NotificationCenter.default.addObserver(self, selector: #selector(self.cleanUp), name: UIApplication.willTerminateNotification, object: nil)
@@ -55,7 +103,7 @@ final class PublicDatabaseManager: DatabaseManager {
         #endif
     }
     
-    func registerLocalDatabase() {
+    public func registerLocalDatabase() {
         syncObjects.forEach { object in
             DispatchQueue.main.async {
                 object.registerLocalDatabase()
@@ -66,7 +114,7 @@ final class PublicDatabaseManager: DatabaseManager {
     // MARK: - Private Methods
     private func excuteQueryOperation(queryOperation: CKQueryOperation,on syncObject: Syncable, callback: ((Error?) -> Void)? = nil) {
         queryOperation.recordFetchedBlock = { record in
-            syncObject.add(record: record)
+            syncObject.add(record: record, databaseManager: self)
         }
         
         queryOperation.queryCompletionBlock = { [weak self] cursor, error in
@@ -79,6 +127,9 @@ final class PublicDatabaseManager: DatabaseManager {
             switch ErrorHandler.shared.resultType(with: error) {
             case .success:
                 DispatchQueue.main.async {
+                    self.syncObjects.forEach {
+                        $0.resolvePendingRelationships()
+                    }
                     callback?(nil)
                 }
             case .retry(let timeToWait, _):
@@ -92,27 +143,9 @@ final class PublicDatabaseManager: DatabaseManager {
         
         database.add(queryOperation)
     }
+
     
-    private func createSubscriptionInPublicDatabase(on syncObject: Syncable) {
-        #if os(iOS) || os(tvOS) || os(macOS)
-        let predict = NSPredicate(value: true)
-        let subscription = CKQuerySubscription(recordType: syncObject.recordType, predicate: predict, subscriptionID: IceCreamSubscription.cloudKitPublicDatabaseSubscriptionID.id, options: [CKQuerySubscription.Options.firesOnRecordCreation, CKQuerySubscription.Options.firesOnRecordUpdate, CKQuerySubscription.Options.firesOnRecordDeletion])
-        
-        let notificationInfo = CKSubscription.NotificationInfo()
-        notificationInfo.shouldSendContentAvailable = true // Silent Push
-        
-        subscription.notificationInfo = notificationInfo
-        
-        let createOp = CKModifySubscriptionsOperation(subscriptionsToSave: [subscription], subscriptionIDsToDelete: [])
-        createOp.modifySubscriptionsCompletionBlock = { _, _, _ in
-            
-        }
-        createOp.qualityOfService = .utility
-        database.add(createOp)
-        #endif
-    }
-    
-    @objc func cleanUp() {
+    @objc public func cleanUp() {
         for syncObject in syncObjects {
             syncObject.cleanUp()
         }

@@ -80,7 +80,7 @@ extension SyncObject: Syncable {
         }
     }
     
-    public func add(record: CKRecord) {
+    public func add(record: CKRecord, databaseManager db: DatabaseManager) {
         BackgroundWorker.shared.start {
             let realm = try! Realm(configuration: self.realmConfiguration)
             guard let object = T.parseFromRecord(
@@ -97,6 +97,10 @@ extension SyncObject: Syncable {
             self.pendingUTypeRelationshipsWorker.realm = realm
             self.pendingVTypeRelationshipsWorker.realm = realm
             self.pendingWTypeRelationshipsWorker.realm = realm
+            
+            self.pendingUTypeRelationshipsWorker.db = db
+            self.pendingVTypeRelationshipsWorker.db = db
+            self.pendingWTypeRelationshipsWorker.db = db
             
             /// If your model class includes a primary key, you can have Realm intelligently update or add objects based off of their primary key values using Realm().add(_:update:).
             /// https://realm.io/docs/swift/latest/#objects-with-primary-keys

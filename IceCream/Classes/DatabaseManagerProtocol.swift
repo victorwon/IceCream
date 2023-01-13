@@ -7,7 +7,7 @@
 
 import CloudKit
 
-protocol DatabaseManager: AnyObject {
+public protocol DatabaseManager: AnyObject {
     
     /// A conduit for accessing and performing operations on the data of an app container.
     var database: CKDatabase { get }
@@ -22,6 +22,7 @@ protocol DatabaseManager: AnyObject {
     func prepare()
     
     func fetchChangesInDatabase(_ callback: ((Error?) -> Void)?)
+    func fetchChangesInDatabase(forRecordType recordType: String, andName recordName: String, _ callback: ((Error?) -> Void)?)
     
     /// The CloudKit Best Practice is out of date, now use this:
     /// https://developer.apple.com/documentation/cloudkit/ckoperation
@@ -35,13 +36,13 @@ protocol DatabaseManager: AnyObject {
     func createCustomZonesIfAllowed()
     func startObservingRemoteChanges()
     func startObservingTermination()
-    func createDatabaseSubscriptionIfHaveNot()
+    func createDatabaseSubscriptionsForAll()
     func registerLocalDatabase()
     
     func cleanUp()
 }
 
-extension DatabaseManager {
+public extension DatabaseManager {
     
     func prepare() {
         syncObjects.forEach {
@@ -78,17 +79,23 @@ extension DatabaseManager {
     }
     
     func startObservingRemoteChanges() {
-        NotificationCenter.default.addObserver(forName: Notifications.cloudKitDataDidChangeRemotely.name, object: nil, queue: nil, using: { [weak self](_) in
+        NotificationCenter.default.addObserver(forName: Notifications.cloudKitDataDidChangeRemotely.name,
+                                               object: nil, queue: nil, using: { [weak self](_ notification) in
             guard let self = self else { return }
             DispatchQueue.global(qos: .utility).async {
-                self.fetchChangesInDatabase(nil)
+                if let db = self as? PublicDatabaseManager {
+                    db.fetchChangesInDatabase(forRecordType: notification.userInfo![IceCreamKey.affectedRecordType.value] as! String,
+                                              andName: notification.userInfo![IceCreamKey.affectedRecordName.value] as! String, nil)
+                } else {
+                    self.fetchChangesInDatabase(nil)
+                }
             }
         })
     }
     
     /// Sync local data to CloudKit
     /// For more about the savePolicy: https://developer.apple.com/documentation/cloudkit/ckrecordsavepolicy
-    public func syncRecordsToCloudKit(recordsToStore: [CKRecord], recordIDsToDelete: [CKRecord.ID], completion: ((Error?) -> ())? = nil) {
+    func syncRecordsToCloudKit(recordsToStore: [CKRecord], recordIDsToDelete: [CKRecord.ID], completion: ((Error?) -> ())? = nil) {
         let modifyOpe = CKModifyRecordsOperation(recordsToSave: recordsToStore, recordIDsToDelete: recordIDsToDelete)
         
         if #available(iOS 11.0, OSX 10.13, tvOS 11.0, watchOS 4.0, *) {
@@ -132,11 +139,13 @@ extension DatabaseManager {
                     self.syncRecordsToCloudKit(recordsToStore: chunk, recordIDsToDelete: recordIDsToDelete, completion: completion)
                 }
             default:
+                print("DEBUG: \(error.debugDescription)")
                 return
             }
         }
         
         database.add(modifyOpe)
     }
+    
     
 }
