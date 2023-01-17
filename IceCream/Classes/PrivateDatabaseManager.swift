@@ -18,6 +18,10 @@ final class PrivateDatabaseManager: DatabaseManager {
         // TODO: implement this for private database
         fatalError("Method not implemented yet for private DB.")
     }
+    func fetchChangesInDatabase(queryOperation: CKQueryOperation,on syncObject: Syncable, _ callback: ((Error?) -> Void)?) {
+        // TODO: implement this for private database
+        fatalError("Method not implemented yet for private DB.")
+    }
     
     let container: CKContainer
     let database: CKDatabase

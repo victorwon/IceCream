@@ -48,6 +48,10 @@ public final class PublicDatabaseManager: DatabaseManager {
         
     }
     
+    public func fetchChangesInDatabase(queryOperation: CKQueryOperation,on syncObject: Syncable, _ callback: ((Error?) -> Void)?) {
+        self.excuteQueryOperation(queryOperation: queryOperation, on: syncObject, callback: callback)
+    }
+    
     public func createCustomZonesIfAllowed() {
         
     }

@@ -23,6 +23,7 @@ public protocol DatabaseManager: AnyObject {
     
     func fetchChangesInDatabase(_ callback: ((Error?) -> Void)?)
     func fetchChangesInDatabase(forRecordType recordType: String, andName recordName: String, _ callback: ((Error?) -> Void)?)
+    func fetchChangesInDatabase(queryOperation: CKQueryOperation,on syncObject: Syncable, _ callback: ((Error?) -> Void)?)
     
     /// The CloudKit Best Practice is out of date, now use this:
     /// https://developer.apple.com/documentation/cloudkit/ckoperation

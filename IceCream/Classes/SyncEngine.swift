@@ -15,7 +15,7 @@ import CloudKit
 
 public final class SyncEngine {
     
-    public let databaseManager: DatabaseManager
+    private let databaseManager: DatabaseManager
     
     public convenience init(objects: [Syncable], databaseScope: CKDatabase.Scope = .private, container: CKContainer = .default(), autoSync: Bool = true) {
         switch databaseScope {
@@ -73,6 +73,10 @@ public final class SyncEngine {
 
 // MARK: Public Method
 extension SyncEngine {
+    
+    public func getDatabaseManager() -> DatabaseManager {
+        return self.databaseManager
+    }
     
     /// Fetch data on the CloudKit and merge with local
     ///
