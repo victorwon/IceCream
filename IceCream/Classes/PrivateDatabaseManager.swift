@@ -14,7 +14,7 @@ import UIKit
 import CloudKit
 
 final class PrivateDatabaseManager: DatabaseManager {
-    func fetchChangesInDatabase(forRecordType recordType: String, andName recordName: String, _ callback: ((Error?) -> Void)?) {
+    func fetchChangesInDatabase(forRecordType recordType: String, andNames recordNames: [String], _ callback: ((Error?) -> Void)?) {
         // TODO: implement this for private database
         fatalError("Method not implemented yet for private DB.")
     }

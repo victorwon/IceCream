@@ -22,7 +22,7 @@ public protocol DatabaseManager: AnyObject {
     func prepare()
     
     func fetchChangesInDatabase(_ callback: ((Error?) -> Void)?)
-    func fetchChangesInDatabase(forRecordType recordType: String, andName recordName: String, _ callback: ((Error?) -> Void)?)
+    func fetchChangesInDatabase(forRecordType recordType: String, andNames recordNames: [String], _ callback: ((Error?) -> Void)?)
     func fetchChangesInDatabase(queryOperation: CKQueryOperation,on syncObject: Syncable, _ callback: ((Error?) -> Void)?)
     
     /// The CloudKit Best Practice is out of date, now use this:
@@ -86,7 +86,7 @@ public extension DatabaseManager {
             DispatchQueue.global(qos: .utility).async {
                 if let db = self as? PublicDatabaseManager {
                     db.fetchChangesInDatabase(forRecordType: notification.userInfo![IceCreamKey.affectedRecordType.value] as! String,
-                                              andName: notification.userInfo![IceCreamKey.affectedRecordName.value] as! String, nil)
+                                              andNames: [notification.userInfo![IceCreamKey.affectedRecordName.value] as! String], nil)
                 } else {
                     self.fetchChangesInDatabase(nil)
                 }

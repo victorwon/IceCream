@@ -38,7 +38,7 @@ final class PendingRelationshipsWorker<Element: Object> {
                     // try get them from cloud
                     if let pdb = self.db as? PublicDatabaseManager,
                         let recordName = (primaryKeyValue as? String) ?? (primaryKeyValue as? ObjectId)?.stringValue {
-                        pdb.fetchChangesInDatabase(forRecordType: Element.className(), andName: recordName) { error in
+                        pdb.fetchChangesInDatabase(forRecordType: Element.className(), andNames: [recordName]) { error in
                             if let err = error {
                                 print("== failed unresolving record \(primaryKeyValue) of \(Element.self): \(err)")
                             } else { // link it back to owner

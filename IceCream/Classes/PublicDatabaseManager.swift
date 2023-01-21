@@ -35,14 +35,14 @@ public final class PublicDatabaseManager: DatabaseManager {
         }
     }
     
-    // only fetch record changed in subscribed types instead of whole database
-    public func fetchChangesInDatabase(forRecordType recordType: String, andName recordName: String, _ callback: ((Error?) -> Void)?) {
+    public func fetchChangesInDatabase(forRecordType recordType: String, andNames recordNames: [String], _ callback: ((Error?) -> Void)?) {
+        let predicate = recordNames.isEmpty ? NSPredicate(value: true) : NSPredicate(format: "recordID IN %@", recordNames.map { CKRecord.ID(recordName: $0) } )
         syncObjects.forEach { [weak self] syncObject in
             if syncObject.recordType == recordType {
-                let predicate = NSPredicate(format: "recordID = %@", CKRecord.ID(recordName: recordName))
                 let query = CKQuery(recordType: syncObject.recordType, predicate: predicate)
                 let queryOperation = CKQueryOperation(query: query)
                 self?.excuteQueryOperation(queryOperation: queryOperation, on: syncObject, callback: callback)
+                return
             }
         }
         
