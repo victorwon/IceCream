@@ -137,7 +137,10 @@ extension SyncObject: Syncable {
     public func registerLocalDatabase() {
         BackgroundWorker.shared.start {
             let realm = try! Realm(configuration: self.realmConfiguration)
-            self.notificationToken = realm.objects(T.self).observe({ [weak self](changes) in
+            /// It should only observe top level object keyPath instead of a whole tree, and each Syncable has its own observer already.
+            /// https://www.mongodb.com/developer/products/realm/realm-keypath-filtering/
+            self.notificationToken = realm.objects(T.self).observe(keyPaths: T.sharedSchema()!.properties.map{ $0.name })
+            { [weak self](changes) in
                 guard let self = self else { return }
                 switch changes {
                 case .initial(_):
@@ -151,7 +154,7 @@ extension SyncObject: Syncable {
                 case .error(_):
                     break
                 }
-            })
+            }
         }
     }
     
