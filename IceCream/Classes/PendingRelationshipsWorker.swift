@@ -34,23 +34,25 @@ final class PendingRelationshipsWorker<Element: Object> {
                         list.append(existListElementObject)
                     }
                 } else {
-                    print("== try fetching unresolved record \(primaryKeyValue) of \(Element.self) in Cloud")
-                    // try get them from cloud
+                    // list item hasn't been downloaded, so fetch it from cloud
                     if let pdb = self.db as? PublicDatabaseManager,
                         let recordName = (primaryKeyValue as? String) ?? (primaryKeyValue as? ObjectId)?.stringValue {
                         pdb.fetchChangesInDatabase(forRecordType: Element.className(), andNames: [recordName]) { error in
                             if let err = error {
-                                print("== failed unresolving record \(primaryKeyValue) of \(Element.self): \(err)")
-                            } else { // link it back to owner
+                                print("== Failed to resolve record \(primaryKeyValue) of \(Element.self): \(err)")
+                            } else { // link it back to list
                                 BackgroundWorker.shared.start {
                                     if let o = realm.object(ofType: Element.self, forPrimaryKey: primaryKeyValue) {
                                         try! realm.write {
                                             list.append(o)
                                         }
+                                        print("== Patch resolved record \(primaryKeyValue) of \(Element.self) to \(String(describing: owner.value(forKey: "_id")))")
                                     }
                                 }
                             }
                         }
+                    } else {
+                        print("== Failed to setup remote fetch")
                     }
                 }
                 self.pendingListElementPrimaryKeyValue[primaryKeyValue] = nil
