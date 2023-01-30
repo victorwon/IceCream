@@ -115,7 +115,7 @@ public extension DatabaseManager {
         
         // To avoid CKError.partialFailure, make the operation atomic (if one record fails to get modified, they all fail)
         // If you want to handle partial failures, set .isAtomic to false and implement CKOperationResultType .fail(reason: .partialFailure) where appropriate
-        modifyOpe.isAtomic = true
+        modifyOpe.isAtomic = true // it's ignored in public DB as not supported - https://www.wwdcnotes.com/notes/wwdc14/231/
         
         modifyOpe.modifyRecordsCompletionBlock = {
             [weak self]
