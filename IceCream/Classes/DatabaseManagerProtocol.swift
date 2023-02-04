@@ -85,8 +85,17 @@ public extension DatabaseManager {
             guard let self = self else { return }
             DispatchQueue.global(qos: .utility).async {
                 if let db = self as? PublicDatabaseManager {
-                    db.fetchChangesInDatabase(forRecordType: notification.userInfo![IceCreamKey.affectedRecordType.value] as! String,
-                                              andNames: [notification.userInfo![IceCreamKey.affectedRecordName.value] as! String], nil)
+                    let recordName = notification.userInfo![IceCreamKey.affectedRecordName.value] as! String
+                    let recordType = notification.userInfo![IceCreamKey.affectedRecordType.value] as! String
+                    if notification.userInfo![IceCreamKey.affectedReason.value] as? CKQueryNotification.Reason == .recordDeleted {
+                        self.syncObjects.forEach {  syncObject in
+                            if syncObject.recordType == recordType {
+                                syncObject.delete(recordID: CKRecord.ID(recordName: recordName))
+                            }
+                        }
+                    } else {
+                        db.fetchChangesInDatabase(forRecordType: recordType, andNames: [recordName], nil)
+                    }
                 } else {
                     self.fetchChangesInDatabase(nil)
                 }

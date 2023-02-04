@@ -101,6 +101,7 @@ public enum IceCreamKey: String {
     /// Notifications
     case affectedRecordType
     case affectedRecordName
+    case affectedReason
     
     /// Tokens
     case databaseChangesTokenKey
