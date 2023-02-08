@@ -71,6 +71,7 @@ final class PrivateDatabaseManager: DatabaseManager {
             }
         }
         
+        changesOperation.qualityOfService = .utility 
         database.add(changesOperation)
     }
     
@@ -101,6 +102,7 @@ final class PrivateDatabaseManager: DatabaseManager {
             }
         }
         
+        modifyOp.qualityOfService = .utility 
         database.add(modifyOp)
     }
     
@@ -122,6 +124,7 @@ final class PrivateDatabaseManager: DatabaseManager {
                 self.subscriptionIsLocallyCached = true
             }
         }
+        
         createOp.qualityOfService = .utility
         database.add(createOp)
         #endif
@@ -204,6 +207,7 @@ final class PrivateDatabaseManager: DatabaseManager {
             callback?(error)
         }
         
+        changesOp.qualityOfService = .utility 
         database.add(changesOp)
     }
 }

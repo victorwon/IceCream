@@ -74,6 +74,8 @@ public final class PublicDatabaseManager: DatabaseManager {
                 print("++ ERROR Delete Subscription:", err)
             }
         }
+        
+        deleteOp.qualityOfService = .utility 
         database.add(deleteOp)
         // if predicate is nil, then don't create new subscription. as NSPredicate(value: false) will cause partial failure
         if let predicate = predicate {
@@ -148,6 +150,7 @@ public final class PublicDatabaseManager: DatabaseManager {
             }
         }
         
+        queryOperation.qualityOfService = .utility 
         database.add(queryOperation)
     }
 

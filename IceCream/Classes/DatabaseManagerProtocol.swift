@@ -64,6 +64,9 @@ public extension DatabaseManager {
                         modifyOp.modifyRecordsCompletionBlock = { (_,_,_) in
                             print("Resume modify records success!")
                         }
+                        
+                        modifyOp.qualityOfService = .utility 
+                        
                         // The Apple's example code in doc(https://developer.apple.com/documentation/cloudkit/ckoperation/#1666033)
                         // tells we add operation in container. But however it crashes on iOS 15 beta versions.
                         // And the crash log tells us to "CKDatabaseOperations must be submitted to a CKDatabase".
@@ -154,6 +157,7 @@ public extension DatabaseManager {
             }
         }
         
+        modifyOpe.qualityOfService = .utility 
         database.add(modifyOpe)
     }
     
