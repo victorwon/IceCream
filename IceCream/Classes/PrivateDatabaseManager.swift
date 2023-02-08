@@ -117,7 +117,7 @@ final class PrivateDatabaseManager: DatabaseManager {
         let createOp = CKModifySubscriptionsOperation(subscriptionsToSave: [subscription], subscriptionIDsToDelete: [])
         createOp.modifySubscriptionsCompletionBlock = { _, _, error in
             if let err = error {
-                print("====== Subscription ERROR: \(err)")
+                print("++ Subscription ERROR:", err)
             } else {
                 self.subscriptionIsLocallyCached = true
             }

@@ -66,12 +66,12 @@ public final class PublicDatabaseManager: DatabaseManager {
         #if os(iOS) || os(tvOS) || os(macOS)
         let subId = IceCreamSubscription.PREFIX + syncObject.recordType
         // subscription needs to be updated when app becomes/resigns active, it's dynamic, can't be cached.
-        print("== Registering subscription: \(subId)")
+        print("== Registering subscription:", subId)
         // must delete old one if any, otherwise it won't update
         let deleteOp = CKModifySubscriptionsOperation(subscriptionsToSave: nil, subscriptionIDsToDelete: [subId])
         deleteOp.modifySubscriptionsCompletionBlock = { _, _, error in
             if let err = error {
-                print("====== Delete Subscription ERROR: \(err)")
+                print("++ ERROR Delete Subscription:", err)
             }
         }
         database.add(deleteOp)
@@ -88,7 +88,7 @@ public final class PublicDatabaseManager: DatabaseManager {
             createOp.addDependency(deleteOp) // create only after deleting is done
             createOp.modifySubscriptionsCompletionBlock = { _, _, error in
                 if let err = error {
-                    print("====== Create Subscription \(syncObject.recordType) ERROR: \(err)")
+                    print("++ ERROR Create Subscription:", syncObject.recordType, err)
                 }
             }
             createOp.qualityOfService = .utility
@@ -121,6 +121,7 @@ public final class PublicDatabaseManager: DatabaseManager {
     private func excuteQueryOperation(queryOperation: CKQueryOperation,on syncObject: Syncable, callback: ((Error?) -> Void)? = nil) {
         queryOperation.recordFetchedBlock = { record in
             syncObject.add(record: record, databaseManager: self)
+            print("== Downloaded record:", record.recordType, record.recordID.recordName)
         }
         
         queryOperation.queryCompletionBlock = { [weak self] cursor, error in
