@@ -152,12 +152,16 @@ public extension DatabaseManager {
                     for chunk in chunkedRecords {
                         self.syncRecordsToCloudKit(recordsToStore: chunk, recordIDsToDelete: [], completion: completion)
                     }
+                } else {
+                    self.syncRecordsToCloudKit(recordsToStore: recordsToStore, recordIDsToDelete: [], completion: completion)
                 }
                 if recordIDsToDelete.count > 300 {
                     let chunkedRecords = recordIDsToDelete.chunkItUp(by: 300)
                     for chunk in chunkedRecords {
                         self.syncRecordsToCloudKit(recordsToStore: [], recordIDsToDelete: chunk, completion: completion)
                     }
+                } else {
+                    self.syncRecordsToCloudKit(recordsToStore: [], recordIDsToDelete: recordIDsToDelete, completion: completion)
                 }
             default:
                 print("DEBUG: \(error.debugDescription)")
