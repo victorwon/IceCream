@@ -194,7 +194,7 @@ struct ErrorHandler {
     
 }
 
-extension Array where Element: CKRecord {
+extension Array where Element: Any {
     /// Chunk the big group into smaller ones, with the given chunkSize
     /// For example, we have some dogs(You can test it in the playground):
     ///
