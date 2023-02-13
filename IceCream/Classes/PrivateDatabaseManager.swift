@@ -18,7 +18,7 @@ final class PrivateDatabaseManager: DatabaseManager {
         // TODO: implement this for private database
         fatalError("Method not implemented yet for private DB.")
     }
-    func fetchChangesInDatabase(queryOperation: CKQueryOperation,on syncObject: Syncable, _ callback: ((Error?) -> Void)?) {
+    func fetchChangesInDatabase(queryOperation: CKQueryOperation, on syncObject: Syncable, _ callback: ((Error?) -> Void)?) {
         // TODO: implement this for private database
         fatalError("Method not implemented yet for private DB.")
     }
@@ -27,11 +27,13 @@ final class PrivateDatabaseManager: DatabaseManager {
     let database: CKDatabase
     
     let syncObjects: [Syncable]
+    let qos: QualityOfService
     
-    public init(objects: [Syncable], container: CKContainer) {
+    public init(objects: [Syncable], container: CKContainer, qualityOfService: QualityOfService) {
         self.syncObjects = objects
         self.container = container
         self.database = container.privateCloudDatabase
+        self.qos = qualityOfService
     }
     
 
@@ -71,7 +73,7 @@ final class PrivateDatabaseManager: DatabaseManager {
             }
         }
         
-        changesOperation.qualityOfService = .utility 
+        changesOperation.qualityOfService = self.qos
         database.add(changesOperation)
     }
     
@@ -102,7 +104,7 @@ final class PrivateDatabaseManager: DatabaseManager {
             }
         }
         
-        modifyOp.qualityOfService = .utility 
+        modifyOp.qualityOfService = self.qos
         database.add(modifyOp)
     }
     
@@ -125,7 +127,7 @@ final class PrivateDatabaseManager: DatabaseManager {
             }
         }
         
-        createOp.qualityOfService = .utility
+        createOp.qualityOfService = self.qos
         database.add(createOp)
         #endif
     }
@@ -207,7 +209,7 @@ final class PrivateDatabaseManager: DatabaseManager {
             callback?(error)
         }
         
-        changesOp.qualityOfService = .utility 
+        changesOp.qualityOfService = self.qos
         database.add(changesOp)
     }
 }

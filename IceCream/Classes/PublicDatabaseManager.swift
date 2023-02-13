@@ -19,11 +19,13 @@ public final class PublicDatabaseManager: DatabaseManager {
     public let database: CKDatabase
     
     public var syncObjects: [Syncable]
+    public let qos: QualityOfService
     
-    public init(objects: [Syncable], container: CKContainer) {
+    public init(objects: [Syncable], container: CKContainer, qualityOfService: QualityOfService) {
         self.syncObjects = objects
         self.container = container
         self.database = container.publicCloudDatabase
+        self.qos = qualityOfService
     }
     
     public func fetchChangesInDatabase(_ callback: ((Error?) -> Void)?) {
@@ -75,7 +77,7 @@ public final class PublicDatabaseManager: DatabaseManager {
             }
         }
         
-        deleteOp.qualityOfService = .utility 
+        deleteOp.qualityOfService = self.qos
         database.add(deleteOp)
         // if predicate is nil, then don't create new subscription. as NSPredicate(value: false) will cause partial failure
         if let predicate = predicate {
@@ -93,7 +95,7 @@ public final class PublicDatabaseManager: DatabaseManager {
                     print("++ ERROR Create Subscription:", syncObject.recordType, err)
                 }
             }
-            createOp.qualityOfService = .utility
+            createOp.qualityOfService = self.qos
             database.add(createOp)
         }
         #endif
@@ -150,7 +152,7 @@ public final class PublicDatabaseManager: DatabaseManager {
             }
         }
         
-        queryOperation.qualityOfService = .utility 
+        queryOperation.qualityOfService = self.qos
         database.add(queryOperation)
     }
 

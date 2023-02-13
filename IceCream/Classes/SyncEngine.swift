@@ -17,13 +17,14 @@ public final class SyncEngine {
     
     private let databaseManager: DatabaseManager
     
-    public convenience init(objects: [Syncable], databaseScope: CKDatabase.Scope = .private, container: CKContainer = .default(), autoSync: Bool = true) {
+    public convenience init(objects: [Syncable], databaseScope: CKDatabase.Scope = .private, container: CKContainer = .default(),
+                            autoSync: Bool = true, qualityOfService: QualityOfService = .utility) {
         switch databaseScope {
         case .private:
-            let privateDatabaseManager = PrivateDatabaseManager(objects: objects, container: container)
+            let privateDatabaseManager = PrivateDatabaseManager(objects: objects, container: container, qualityOfService: qualityOfService)
             self.init(databaseManager: privateDatabaseManager, autoSync: autoSync)
         case .public:
-            let publicDatabaseManager = PublicDatabaseManager(objects: objects, container: container)
+            let publicDatabaseManager = PublicDatabaseManager(objects: objects, container: container, qualityOfService: qualityOfService)
             self.init(databaseManager: publicDatabaseManager, autoSync: autoSync)
         default:
             fatalError("Shared database scope is not supported yet")

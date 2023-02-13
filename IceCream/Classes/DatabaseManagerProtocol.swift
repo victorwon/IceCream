@@ -17,7 +17,9 @@ public protocol DatabaseManager: AnyObject {
     
     var syncObjects: [Syncable] { get }
     
-    init(objects: [Syncable], container: CKContainer)
+    var qos: QualityOfService { get }
+    
+    init(objects: [Syncable], container: CKContainer, qualityOfService: QualityOfService)
     
     func prepare()
     
@@ -65,7 +67,7 @@ public extension DatabaseManager {
                             print("Resume modify records success!")
                         }
                         
-                        modifyOp.qualityOfService = .utility 
+                        modifyOp.qualityOfService = self.qos
                         
                         // The Apple's example code in doc(https://developer.apple.com/documentation/cloudkit/ckoperation/#1666033)
                         // tells we add operation in container. But however it crashes on iOS 15 beta versions.
@@ -86,7 +88,8 @@ public extension DatabaseManager {
         NotificationCenter.default.addObserver(forName: Notifications.cloudKitDataDidChangeRemotely.name,
                                                object: nil, queue: nil, using: { [weak self](_ notification) in
             guard let self = self else { return }
-            DispatchQueue.global(qos: .utility).async {
+            let dqos = self.qos == .userInteractive ? DispatchQoS.QoSClass.userInteractive : DispatchQoS.QoSClass.utility
+            DispatchQueue.global(qos: dqos).async {
                 if let db = self as? PublicDatabaseManager {
                     let recordName = notification.userInfo![IceCreamKey.affectedRecordName.value] as! String
                     let recordType = notification.userInfo![IceCreamKey.affectedRecordType.value] as! String
@@ -163,13 +166,12 @@ public extension DatabaseManager {
                 } else {
                     self.syncRecordsToCloudKit(recordsToStore: [], recordIDsToDelete: recordIDsToDelete, completion: completion)
                 }
-            default:
-                print("DEBUG: \(error.debugDescription)")
+            default: // already printed log in ErrorHandler
                 return
             }
         }
         
-        modifyOpe.qualityOfService = .utility 
+        modifyOpe.qualityOfService = self.qos 
         database.add(modifyOpe)
     }
     
