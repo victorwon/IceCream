@@ -188,5 +188,16 @@ extension SyncObject: Syncable {
         pipeToEngine?(recordsToStore, [])
     }
     
+    public func writeWithoutNotifying(_ block: @escaping (_ realm: Realm)->Void) {
+        BackgroundWorker.shared.start {
+            let realm = try! Realm(configuration: self.realmConfiguration)
+            var tokens: [NotificationToken] = []
+            self.notificationToken.flatMap { tokens = [$0] }
+            
+            realm.beginWrite()
+            block(realm)
+            try! realm.commitWrite(withoutNotifying: tokens)
+        }
+    }
 }
 

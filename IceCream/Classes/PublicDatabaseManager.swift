@@ -64,7 +64,7 @@ public final class PublicDatabaseManager: DatabaseManager {
         #endif
     }
     
-    public func createSubscriptionInPublicDatabase(on syncObject: Syncable, with predicate: NSPredicate?) {
+    public func createSubscriptionInPublicDatabase(on syncObject: Syncable, with predicate: NSPredicate?, args: [String]? = nil) {
         #if os(iOS) || os(tvOS) || os(macOS)
         let subId = IceCreamSubscription.PREFIX + syncObject.recordType
         // subscription needs to be updated when app becomes/resigns active, it's dynamic, can't be cached.
@@ -72,32 +72,47 @@ public final class PublicDatabaseManager: DatabaseManager {
         // must delete old one if any, otherwise it won't update
         let deleteOp = CKModifySubscriptionsOperation(subscriptionsToSave: nil, subscriptionIDsToDelete: [subId])
         deleteOp.modifySubscriptionsCompletionBlock = { _, _, error in
-            if let err = error {
-                print("++ ERROR Delete Subscription:", err)
+            switch ErrorHandler.shared.resultType(with: error) {
+            case .success:
+                print("== Old subscription deleted successfully", subId)
+                // if predicate is nil, then don't create new subscription. as NSPredicate(value: false) will cause partial failure
+                if let predicate = predicate {
+                    let subscription = CKQuerySubscription(recordType: syncObject.recordType, predicate: predicate,
+                                                           subscriptionID: subId,
+                                                           options: [CKQuerySubscription.Options.firesOnRecordCreation, CKQuerySubscription.Options.firesOnRecordUpdate, CKQuerySubscription.Options.firesOnRecordDeletion])
+                    let notificationInfo = CKSubscription.NotificationInfo()
+                    notificationInfo.shouldSendContentAvailable = true // must be true or nothing will arrive. triple tested and it doesn't work even when app is in foreground.
+                    notificationInfo.alertLocalizationArgs = args
+                    subscription.notificationInfo = notificationInfo
+                    let createOp = CKModifySubscriptionsOperation(subscriptionsToSave: [subscription], subscriptionIDsToDelete: nil)
+                    createOp.addDependency(deleteOp) // create only after deleting is done
+                    createOp.modifySubscriptionsCompletionBlock = { _, _, error in
+                        switch ErrorHandler.shared.resultType(with: error) {
+                        case .success:
+                            print("== New subscription created successfully", subId)
+                        case .retry(let timeToWait, _):
+                            ErrorHandler.shared.retryOperationIfPossible(retryAfter: timeToWait, block: {
+                                self.createSubscriptionInPublicDatabase(on: syncObject, with: predicate, args: args)
+                            })
+                        default:
+                            break
+                        }
+                    }
+                    createOp.qualityOfService = self.qos
+                    self.database.add(createOp)
+                }
+                
+            case .retry(let timeToWait, _):
+                ErrorHandler.shared.retryOperationIfPossible(retryAfter: timeToWait, block: {
+                    self.createSubscriptionInPublicDatabase(on: syncObject, with: predicate, args: args)
+                })
+            default:
+                break
             }
         }
-        
         deleteOp.qualityOfService = self.qos
         database.add(deleteOp)
-        // if predicate is nil, then don't create new subscription. as NSPredicate(value: false) will cause partial failure
-        if let predicate = predicate {
-            let subscription = CKQuerySubscription(recordType: syncObject.recordType, predicate: predicate,
-                                                   subscriptionID: subId,
-                                                   options: [CKQuerySubscription.Options.firesOnRecordCreation, CKQuerySubscription.Options.firesOnRecordUpdate, CKQuerySubscription.Options.firesOnRecordDeletion])
-            let notificationInfo = CKSubscription.NotificationInfo()
-            notificationInfo.shouldSendContentAvailable = true // must be true or nothing will arrive. triple tested and it doesn't work even when app is in foreground.
-            // notificationInfo.desiredKeys = ["userId"] // can't set it to nil or empty, otherwise no sub notifications will arrive
-            subscription.notificationInfo = notificationInfo
-            let createOp = CKModifySubscriptionsOperation(subscriptionsToSave: [subscription], subscriptionIDsToDelete: nil)
-            createOp.addDependency(deleteOp) // create only after deleting is done
-            createOp.modifySubscriptionsCompletionBlock = { _, _, error in
-                if let err = error {
-                    print("++ ERROR Create Subscription:", syncObject.recordType, err)
-                }
-            }
-            createOp.qualityOfService = self.qos
-            database.add(createOp)
-        }
+        
         #endif
     }
     
@@ -125,7 +140,7 @@ public final class PublicDatabaseManager: DatabaseManager {
     private func excuteQueryOperation(queryOperation: CKQueryOperation,on syncObject: Syncable, callback: ((Error?) -> Void)? = nil) {
         queryOperation.recordFetchedBlock = { record in
             syncObject.add(record: record, databaseManager: self)
-            print("== Downloaded record:", record.recordType, record.recordID.recordName)
+            print("== Fetched record:", record.recordType, record.recordID.recordName)
         }
         
         queryOperation.queryCompletionBlock = { [weak self] cursor, error in

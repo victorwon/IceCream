@@ -35,4 +35,5 @@ public protocol Syncable: AnyObject {
     /// Callback
     var pipeToEngine: ((_ recordsToStore: [CKRecord], _ recordIDsToDelete: [CKRecord.ID]) -> ())? { get set }
     
+    func writeWithoutNotifying(_ block: @escaping (_ realm: Realm)->Void)
 }
