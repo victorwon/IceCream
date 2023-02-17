@@ -64,7 +64,11 @@ public final class PublicDatabaseManager: DatabaseManager {
         #endif
     }
     
-    public func createSubscriptionInPublicDatabase(on syncObject: Syncable, with predicate: NSPredicate?, args: [String]? = nil) {
+    public func createSubscriptionInPublicDatabase(on syncObject: Syncable, with predicate: NSPredicate?,
+                                                   args: [String]? = nil,
+                                                   options: CKQuerySubscription.Options = [CKQuerySubscription.Options.firesOnRecordCreation,
+                                                                                           CKQuerySubscription.Options.firesOnRecordUpdate,
+                                                                                           CKQuerySubscription.Options.firesOnRecordDeletion] ) {
         #if os(iOS) || os(tvOS) || os(macOS)
         let subId = IceCreamSubscription.PREFIX + syncObject.recordType
         // subscription needs to be updated when app becomes/resigns active, it's dynamic, can't be cached.
@@ -79,7 +83,7 @@ public final class PublicDatabaseManager: DatabaseManager {
                 if let predicate = predicate {
                     let subscription = CKQuerySubscription(recordType: syncObject.recordType, predicate: predicate,
                                                            subscriptionID: subId,
-                                                           options: [CKQuerySubscription.Options.firesOnRecordCreation, CKQuerySubscription.Options.firesOnRecordUpdate, CKQuerySubscription.Options.firesOnRecordDeletion])
+                                                           options: options)
                     let notificationInfo = CKSubscription.NotificationInfo()
                     notificationInfo.shouldSendContentAvailable = true // must be true or nothing will arrive. triple tested and it doesn't work even when app is in foreground.
                     notificationInfo.alertLocalizationArgs = args
@@ -92,7 +96,7 @@ public final class PublicDatabaseManager: DatabaseManager {
                             print("== New subscription created successfully", subId)
                         case .retry(let timeToWait, _):
                             ErrorHandler.shared.retryOperationIfPossible(retryAfter: timeToWait, block: {
-                                self.createSubscriptionInPublicDatabase(on: syncObject, with: predicate, args: args)
+                                self.createSubscriptionInPublicDatabase(on: syncObject, with: predicate, args: args, options: options)
                             })
                         default:
                             break
@@ -104,7 +108,7 @@ public final class PublicDatabaseManager: DatabaseManager {
                 
             case .retry(let timeToWait, _):
                 ErrorHandler.shared.retryOperationIfPossible(retryAfter: timeToWait, block: {
-                    self.createSubscriptionInPublicDatabase(on: syncObject, with: predicate, args: args)
+                    self.createSubscriptionInPublicDatabase(on: syncObject, with: predicate, args: args, options: options)
                 })
             default:
                 break
