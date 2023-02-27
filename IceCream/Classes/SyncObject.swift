@@ -168,7 +168,7 @@ extension SyncObject: Syncable {
         BackgroundWorker.shared.start {
             let realm = try! Realm(configuration: self.realmConfiguration)
             let objects = realm.objects(T.self).filter { $0.isDeleted }
-            
+            print("Objects \(T.self.recordType) to clean:", objects.count)
             var tokens: [NotificationToken] = []
             self.notificationToken.flatMap { tokens = [$0] }
             
@@ -177,7 +177,7 @@ extension SyncObject: Syncable {
             do {
                 try realm.commitWrite(withoutNotifying: tokens)
             } catch {
-                
+                print("Unexpected error: \(error).")
             }
         }
     }
