@@ -33,29 +33,21 @@ final class PendingRelationshipsWorker<Element: Object> {
                     try! realm.write {
                         list.append(existListElementObject)
                     }
-                } else {
-                    // list item hasn't been downloaded, so fetch it from cloud
-                    if let pdb = self.db as? PublicDatabaseManager,
-                        let recordName = (primaryKeyValue as? String) ?? (primaryKeyValue as? ObjectId)?.stringValue {
-                        pdb.fetchChangesInDatabase(forRecordType: Element.className(), andNames: [recordName]) { error in
-                            if let err = error {
-                                print("++ Failed to resolve record:", primaryKeyValue, Element.self, err)
-                            } else { // link it back to list
-                                BackgroundWorker.shared.start {
-                                    if let o = realm.object(ofType: Element.self, forPrimaryKey: primaryKeyValue) {
-                                        try! realm.write {
-                                            list.append(o)
-                                        }
-                                        print("== Patch resolved record", primaryKeyValue, Element.self)
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        print("++ Failed to setup remote fetch")
-                    }
+                    self.pendingListElementPrimaryKeyValue[primaryKeyValue] = nil
                 }
-                self.pendingListElementPrimaryKeyValue[primaryKeyValue] = nil
+            }
+            
+            // for items hasn't been downloaded, fetch them from cloud
+            if self.pendingListElementPrimaryKeyValue.count > 0 {
+                let pks = self.pendingListElementPrimaryKeyValue.compactMap { ($0.0 as? ObjectId)?.stringValue ?? $0.0 as? String }
+                self.pendingListElementPrimaryKeyValue.removeAll() // clean the pending before fetch as it could come back recursively
+                if let pdb = self.db as? PublicDatabaseManager {
+                    pdb.fetchChangesInDatabase(forRecordType: Element.className(), andNames: pks) { error in
+                        if let err = error {
+                            print("++ Failed to resolve records:", Element.self, err)
+                        }
+                    }
+                } // else TODO: private database
             }
         }
     }
